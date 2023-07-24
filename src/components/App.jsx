@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Button from './Button/Button';
 import Searchbar from './Searchbar/Searchbar';
@@ -17,17 +17,9 @@ const App = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isLastPage, setIsLastPage] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  useEffect(() => {
-    if (query !== '') {
-      setImages([]);
-      setPage(1);
-      setIsLastPage(false);
-      fetchImages();
-    }
-  }, [query]);
-
-  const fetchImages = () => {
+  const fetchImages = useCallback(() => {
     const API_KEY = '36285780-5e432e43a01ab0bbeda1983f2';
 
     setIsLoading(true);
@@ -40,9 +32,12 @@ const App = () => {
         const { hits, totalHits } = response.data;
 
         if (hits.length === 0) {
-          toast('Sorry, there are no images matching your request...', {
-            position: toast.POSITION.TOP_CENTER,
-          });
+          toast(
+            'Przepraszamy, nie znaleziono obrazów pasujących do Twojego zapytania...',
+            {
+              position: toast.POSITION.TOP_CENTER,
+            }
+          );
         }
 
         const modifiedHits = hits.map(
@@ -55,7 +50,6 @@ const App = () => {
         );
 
         setImages(prevImages => [...prevImages, ...modifiedHits]);
-        setPage(prevPage => prevPage + 1);
         setIsLastPage(
           prevImages => prevImages.length + modifiedHits.length >= totalHits
         );
@@ -65,14 +59,24 @@ const App = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        setIsLoadingMore(false);
       });
-  };
+  }, [query, page]);
 
-  const handleSearchSubmit = query => {
-    if (query === '') {
+  useEffect(() => {
+    if (query !== '') {
+      setImages([]);
+      setPage(1);
+      setIsLastPage(false);
+      fetchImages();
+    }
+  }, [query, fetchImages]);
+
+  const handleSearchSubmit = newQuery => {
+    if (newQuery === query) {
       return;
     }
-    setQuery(query);
+    setQuery(newQuery);
     setPage(1);
     setImages([]);
     setError(null);
@@ -91,6 +95,14 @@ const App = () => {
     document.body.style.overflow = 'auto';
   };
 
+  const handleLoadMore = () => {
+    if (!isLoadingMore) {
+      setIsLoadingMore(true);
+      fetchImages(page + 1);
+      setPage(prevPage => prevPage + 1);
+    }
+  };
+
   return (
     <div className={css.App}>
       <Searchbar onSubmit={handleSearchSubmit} />
@@ -102,7 +114,7 @@ const App = () => {
       {isLoading && <Loader />}
 
       {!isLoading && images.length > 0 && !isLastPage && (
-        <Button onClick={fetchImages} />
+        <Button onClick={handleLoadMore} />
       )}
 
       {showModal && <Modal image={selectedImage} onClose={handleModalClose} />}
