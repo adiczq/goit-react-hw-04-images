@@ -1,38 +1,56 @@
-import { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import Button from './Button/Button';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
 import css from './App.module.css';
-import { toast } from 'react-toastify';
 
-class App extends Component {
-  state = {
-    images: [],
-    isLoading: false,
-    error: null,
-    query: '',
-    page: 1,
-    showModal: false,
-    selectedImage: null,
-    isLastPage: false,
+const App = () => {
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isLastPage, setIsLastPage] = useState(false);
+
+  useEffect(() => {
+    if (query !== '') {
+      setImages([]);
+      setPage(1);
+      setIsLastPage(false);
+      fetchImages();
+    }
+  }, [query]);
+
+  useEffect(() => {
+    saveStateToLocalStorage();
+  }, [images, query]);
+
+  const saveStateToLocalStorage = () => {
+    localStorage.setItem('images', JSON.stringify(images));
+    localStorage.setItem('query', query);
   };
 
-  componentDidUpdate(_prevProps, prevState) {
-    if (prevState.query !== this.state.query) {
-      this.setState({ images: [], page: 1, isLastPage: false }, () => {
-        this.fetchImages();
-      });
+  useEffect(() => {
+    const storedImages = localStorage.getItem('images');
+    const storedQuery = localStorage.getItem('query');
+
+    if (storedImages) {
+      setImages(JSON.parse(storedImages));
     }
-  }
+    if (storedQuery) {
+      setQuery(storedQuery);
+    }
+  }, []);
 
-  fetchImages = () => {
-    const { query, page } = this.state;
+  const fetchImages = () => {
     const API_KEY = '36285780-5e432e43a01ab0bbeda1983f2';
-
-    this.setState({ isLoading: true });
+    setIsLoading(true);
 
     axios
       .get(
@@ -56,67 +74,51 @@ class App extends Component {
           })
         );
 
-        this.setState(prevState => ({
-          images: [...prevState.images, ...modifiedHits],
-          page: prevState.page + 1,
-          isLastPage:
-            prevState.images.length + modifiedHits.length >= totalHits,
-        }));
+        setImages(prevImages => [...prevImages, ...modifiedHits]);
+        setPage(prevPage => prevPage + 1);
+        setIsLastPage(
+          prevImages => prevImages.length + modifiedHits.length >= totalHits
+        );
       })
       .catch(error => {
-        this.setState({ error: error.message });
+        setError(error.message);
       })
       .finally(() => {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
       });
   };
 
-  handleSearchSubmit = query => {
-    if (this.state.query === query) {
+  const handleSearchSubmit = newQuery => {
+    if (query === newQuery) {
       return;
     }
-    this.setState({
-      query: query,
-      page: 1,
-      images: [],
-      error: null,
-      isLastPage: false,
-    });
+    setQuery(newQuery);
   };
 
-  handleImageClick = image => {
-    this.setState({ selectedImage: image, showModal: true });
+  const handleImageClick = image => {
+    setSelectedImage(image);
+    setShowModal(true);
     document.body.style.overflow = 'hidden';
   };
 
-  handleModalClose = () => {
-    this.setState({ selectedImage: null, showModal: false });
+  const handleModalClose = () => {
+    setSelectedImage(null);
+    setShowModal(false);
     document.body.style.overflow = 'auto';
   };
 
-  render() {
-    const { images, isLoading, error, showModal, selectedImage, isLastPage } =
-      this.state;
-    return (
-      <div className={css.App}>
-        <Searchbar onSubmit={this.handleSearchSubmit} />
-
-        {error && <p>Error: {error}</p>}
-
-        <ImageGallery images={images} onItemClick={this.handleImageClick} />
-
-        {isLoading && <Loader />}
-
-        {!isLoading && images.length > 0 && !isLastPage && (
-          <Button onClick={this.fetchImages} />
-        )}
-
-        {showModal && (
-          <Modal image={selectedImage} onClose={this.handleModalClose} />
-        )}
-      </div>
-    );
-  }
-}
+  return (
+    <div className={css.App}>
+      <Searchbar onSubmit={handleSearchSubmit} />
+      {error && <p>Error: {error}</p>}
+      <ImageGallery images={images} onItemClick={handleImageClick} />
+      {isLoading && <Loader />}
+      {!isLoading && images.length > 0 && !isLastPage && (
+        <Button onClick={fetchImages} />
+      )}
+      {showModal && <Modal image={selectedImage} onClose={handleModalClose} />}
+    </div>
+  );
+};
 
 export default App;
