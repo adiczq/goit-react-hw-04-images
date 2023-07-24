@@ -2,6 +2,7 @@ import ImageGalleryItem from 'components/ImageGalleryItem/ImageGalleryItem';
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import css from './ImageGallery.module.css';
+import { nanoid } from 'nanoid';
 
 class ImageGallery extends Component {
   render() {
@@ -10,7 +11,7 @@ class ImageGallery extends Component {
       <ul className={css.ImageGallery}>
         {images.map(({ id, webformatURL, largeImageURL, tags }) => (
           <ImageGalleryItem
-            key={id}
+            key={nanoid()}
             image={{
               webformatURL: webformatURL,
               tags: tags,
