@@ -17,7 +17,6 @@ const App = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isLastPage, setIsLastPage] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const fetchImages = useCallback(() => {
     const API_KEY = '36285780-5e432e43a01ab0bbeda1983f2';
@@ -32,12 +31,9 @@ const App = () => {
         const { hits, totalHits } = response.data;
 
         if (hits.length === 0) {
-          toast(
-            'Przepraszamy, nie znaleziono obrazów pasujących do Twojego zapytania...',
-            {
-              position: toast.POSITION.TOP_CENTER,
-            }
-          );
+          toast('Sorry, there are no images matching your request...', {
+            position: toast.POSITION.TOP_CENTER,
+          });
         }
 
         const modifiedHits = hits.map(
@@ -53,13 +49,11 @@ const App = () => {
         setIsLastPage(
           prevImages => prevImages.length + modifiedHits.length >= totalHits
         );
+        setIsLoading(false);
       })
       .catch(error => {
         setError(error.message);
-      })
-      .finally(() => {
         setIsLoading(false);
-        setIsLoadingMore(false);
       });
   }, [query, page]);
 
@@ -77,10 +71,6 @@ const App = () => {
       return;
     }
     setQuery(newQuery);
-    setPage(1);
-    setImages([]);
-    setError(null);
-    setIsLastPage(false);
   };
 
   const handleImageClick = image => {
@@ -96,11 +86,9 @@ const App = () => {
   };
 
   const handleLoadMore = () => {
-    if (!isLoadingMore) {
-      setIsLoadingMore(true);
-      fetchImages(page + 1);
-      setPage(prevPage => prevPage + 1);
-    }
+    console.log('Before setPage:', page);
+    setPage(prevPage => prevPage + 1);
+    console.log('After setPage:', page);
   };
 
   return (
