@@ -6,7 +6,8 @@ import ImageGallery from './ImageGallery/ImageGallery';
 import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
 import css from './App.module.css';
-import { toast } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const App = () => {
   const [images, setImages] = useState([]);
@@ -18,54 +19,66 @@ const App = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isLastPage, setIsLastPage] = useState(false);
 
-  const fetchImages = useCallback(() => {
-    const API_KEY = '36285780-5e432e43a01ab0bbeda1983f2';
+  const fetchImages = useCallback(
+    currentPage => {
+      const API_KEY = '36285780-5e432e43a01ab0bbeda1983f2';
 
-    setIsLoading(true);
+      setIsLoading(true);
 
-    axios
-      .get(
-        `https://pixabay.com/api/?q=${query}&page=${page}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
-      )
-      .then(response => {
-        const { hits, totalHits } = response.data;
+      axios
+        .get(
+          `https://pixabay.com/api/?q=${query}&page=${currentPage}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
+        )
+        .then(response => {
+          const { hits, totalHits } = response.data;
 
-        if (hits.length === 0) {
-          toast('Sorry, there are no images matching your request...', {
-            position: toast.POSITION.TOP_CENTER,
-          });
-        }
+          if (hits.length === 0) {
+            toast('Sorry, there are no images matching your request...', {
+              position: toast.POSITION.TOP_CENTER,
+            });
+          }
 
-        const modifiedHits = hits.map(
-          ({ id, tags, webformatURL, largeImageURL }) => ({
-            id,
-            tags,
-            webformatURL,
-            largeImageURL,
-          })
-        );
+          const modifiedHits = hits.map(
+            ({ id, tags, webformatURL, largeImageURL }) => ({
+              id,
+              tags,
+              webformatURL,
+              largeImageURL,
+            })
+          );
 
-        setImages(prevImages => [...prevImages, ...modifiedHits]);
-        setIsLastPage(
-          prevImages => prevImages.length + modifiedHits.length >= totalHits
-        );
-        setIsLoading(false);
-      })
-      .catch(error => {
-        setError(error.message);
-        setIsLoading(false);
-      });
-  }, [query, page]);
+          if (page === 1) {
+            setImages(modifiedHits);
+          } else {
+            setImages(prevImages => [...prevImages, ...modifiedHits]);
+          }
+
+          setIsLastPage(
+            prevImages => prevImages.length + modifiedHits.length >= totalHits
+          );
+        })
+        .catch(error => {
+          setError(error.message);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    },
+    [query, page]
+  );
 
   useEffect(() => {
+    console.log('useEffect - Before fetchImages: query:', query, 'page:', page);
     if (query !== '') {
       setImages([]);
-      setPage(1);
       setIsLastPage(false);
-      fetchImages();
+      fetchImages(page);
     }
-  }, [query, fetchImages]);
-
+    console.log('useEffect - After fetchImages: query:', query, 'page:', page);
+  }, [query, page, fetchImages]);
+  useEffect(() => {
+    console.log('Current page:', page);
+  }, [page]);
   const handleSearchSubmit = newQuery => {
     if (newQuery === query) {
       return;
@@ -87,15 +100,19 @@ const App = () => {
 
   const handleLoadMore = () => {
     console.log('Before setPage:', page);
-    setPage(prevPage => prevPage + 1);
-    console.log('After setPage:', page);
+    const nextPage = page + 1;
+    setPage(nextPage);
+
+    fetchImages(nextPage);
+
+    console.log('After setPage:', nextPage);
   };
 
   return (
     <div className={css.App}>
       <Searchbar onSubmit={handleSearchSubmit} />
 
-      {error && <p>Błąd: {error}</p>}
+      {error && <p>Error: {error}</p>}
 
       <ImageGallery images={images} onItemClick={handleImageClick} />
 
@@ -106,6 +123,8 @@ const App = () => {
       )}
 
       {showModal && <Modal image={selectedImage} onClose={handleModalClose} />}
+
+      <ToastContainer />
     </div>
   );
 };
