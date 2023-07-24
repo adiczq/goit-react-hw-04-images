@@ -25,11 +25,11 @@ const App = () => {
       setIsLastPage(false);
       fetchImages();
     }
-  }, [query]);
+  }, [query, fetchImages]);
 
   useEffect(() => {
     saveStateToLocalStorage();
-  }, [images, query]);
+  }, [images, query, saveStateToLocalStorage]);
 
   const saveStateToLocalStorage = () => {
     localStorage.setItem('images', JSON.stringify(images));
