@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { toast } from 'react-toastify';
 import Button from './Button/Button';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
 import css from './App.module.css';
+import { toast } from 'react-toastify';
 
 const App = () => {
   const [images, setImages] = useState([]);
@@ -18,8 +18,18 @@ const App = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isLastPage, setIsLastPage] = useState(false);
 
-  const fetchImages = useCallback(() => {
+  useEffect(() => {
+    if (query !== '') {
+      setImages([]);
+      setPage(1);
+      setIsLastPage(false);
+      fetchImages();
+    }
+  }, [query]);
+
+  const fetchImages = () => {
     const API_KEY = '36285780-5e432e43a01ab0bbeda1983f2';
+
     setIsLoading(true);
 
     axios
@@ -46,7 +56,9 @@ const App = () => {
 
         setImages(prevImages => [...prevImages, ...modifiedHits]);
         setPage(prevPage => prevPage + 1);
-        setIsLastPage(images.length + modifiedHits.length >= totalHits);
+        setIsLastPage(
+          prevImages => prevImages.length + modifiedHits.length >= totalHits
+        );
       })
       .catch(error => {
         setError(error.message);
@@ -54,22 +66,13 @@ const App = () => {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [query, page, images.length]);
+  };
 
-  useEffect(() => {
-    if (query !== '') {
-      setImages([]);
-      setPage(1);
-      setIsLastPage(false);
-      fetchImages();
-    }
-  }, [query, fetchImages]);
-
-  const handleSearchSubmit = newQuery => {
-    if (query === newQuery) {
+  const handleSearchSubmit = query => {
+    if (query === '') {
       return;
     }
-    setQuery(newQuery);
+    setQuery(query);
     setPage(1);
     setImages([]);
     setError(null);
@@ -91,12 +94,17 @@ const App = () => {
   return (
     <div className={css.App}>
       <Searchbar onSubmit={handleSearchSubmit} />
-      {error && <p>Error: {error}</p>}
+
+      {error && <p>Błąd: {error}</p>}
+
       <ImageGallery images={images} onItemClick={handleImageClick} />
+
       {isLoading && <Loader />}
+
       {!isLoading && images.length > 0 && !isLastPage && (
         <Button onClick={fetchImages} />
       )}
+
       {showModal && <Modal image={selectedImage} onClose={handleModalClose} />}
     </div>
   );
