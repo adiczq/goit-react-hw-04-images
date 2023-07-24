@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import Button from './Button/Button';
@@ -18,37 +18,7 @@ const App = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isLastPage, setIsLastPage] = useState(false);
 
-  useEffect(() => {
-    if (query !== '') {
-      setImages([]);
-      setPage(1);
-      setIsLastPage(false);
-      fetchImages();
-    }
-  }, [query, fetchImages]);
-
-  useEffect(() => {
-    saveStateToLocalStorage();
-  }, [images, query, saveStateToLocalStorage]);
-
-  const saveStateToLocalStorage = () => {
-    localStorage.setItem('images', JSON.stringify(images));
-    localStorage.setItem('query', query);
-  };
-
-  useEffect(() => {
-    const storedImages = localStorage.getItem('images');
-    const storedQuery = localStorage.getItem('query');
-
-    if (storedImages) {
-      setImages(JSON.parse(storedImages));
-    }
-    if (storedQuery) {
-      setQuery(storedQuery);
-    }
-  }, []);
-
-  const fetchImages = () => {
+  const fetchImages = useCallback(() => {
     const API_KEY = '36285780-5e432e43a01ab0bbeda1983f2';
     setIsLoading(true);
 
@@ -60,7 +30,7 @@ const App = () => {
         const { hits, totalHits } = response.data;
 
         if (hits.length === 0) {
-          return toast('Sorry, there are no images matching your request...', {
+          toast('Sorry, there are no images matching your request...', {
             position: toast.POSITION.TOP_CENTER,
           });
         }
@@ -76,9 +46,7 @@ const App = () => {
 
         setImages(prevImages => [...prevImages, ...modifiedHits]);
         setPage(prevPage => prevPage + 1);
-        setIsLastPage(
-          prevImages => prevImages.length + modifiedHits.length >= totalHits
-        );
+        setIsLastPage(images.length + modifiedHits.length >= totalHits);
       })
       .catch(error => {
         setError(error.message);
@@ -86,13 +54,26 @@ const App = () => {
       .finally(() => {
         setIsLoading(false);
       });
-  };
+  }, [query, page, images.length]);
+
+  useEffect(() => {
+    if (query !== '') {
+      setImages([]);
+      setPage(1);
+      setIsLastPage(false);
+      fetchImages();
+    }
+  }, [query, fetchImages]);
 
   const handleSearchSubmit = newQuery => {
     if (query === newQuery) {
       return;
     }
     setQuery(newQuery);
+    setPage(1);
+    setImages([]);
+    setError(null);
+    setIsLastPage(false);
   };
 
   const handleImageClick = image => {
