@@ -14,7 +14,7 @@ const Searchbar = ({ onSubmit }) => {
     if (!searchValue.trim()) {
       return;
     }
-    onSubmit(searchValue.trim());
+    onSubmit(searchValue);
   };
 
   return (
