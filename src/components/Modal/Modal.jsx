@@ -11,13 +11,20 @@ const Modal = ({ image, onClose }) => {
     };
 
     window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
 
+  const handleClick = event => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className={css.Overlay} onClick={onClose}>
+    <div className={css.Overlay} onClick={handleClick}>
       <div className={css.Modal}>
         <img src={image.largeImageURL} alt={image.tags} />
       </div>
@@ -28,7 +35,6 @@ const Modal = ({ image, onClose }) => {
 Modal.propTypes = {
   image: PropTypes.shape({
     largeImageURL: PropTypes.string.isRequired,
-    tags: PropTypes.string.isRequired,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
 };
