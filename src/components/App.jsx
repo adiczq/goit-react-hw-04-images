@@ -1,13 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import Button from './Button/Button';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
 import css from './App.module.css';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
 const App = () => {
   const [images, setImages] = useState([]);
@@ -18,72 +17,69 @@ const App = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isLastPage, setIsLastPage] = useState(false);
+  const prevQueryRef = useRef('');
 
-  const fetchImages = useCallback(
-    currentPage => {
-      const API_KEY = '36285780-5e432e43a01ab0bbeda1983f2';
+  const fetchImages = useCallback(() => {
+    const API_KEY = '36285780-5e432e43a01ab0bbeda1983f2';
 
-      setIsLoading(true);
+    setIsLoading(true);
 
-      axios
-        .get(
-          `https://pixabay.com/api/?q=${query}&page=${currentPage}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
-        )
-        .then(response => {
-          const { hits, totalHits } = response.data;
+    axios
+      .get(
+        `https://pixabay.com/api/?q=${query}&page=${page}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
+      )
+      .then(response => {
+        const { hits, totalHits } = response.data;
 
-          if (hits.length === 0) {
-            toast('Sorry, there are no images matching your request...', {
-              position: toast.POSITION.TOP_CENTER,
-            });
-          }
+        if (hits.length === 0) {
+          return toast('Sorry, there are no images matching your request...', {
+            position: toast.POSITION.TOP_CENTER,
+          });
+        }
 
-          const modifiedHits = hits.map(
-            ({ id, tags, webformatURL, largeImageURL }) => ({
-              id,
-              tags,
-              webformatURL,
-              largeImageURL,
-            })
-          );
+        const modifiedHits = hits.map(
+          ({ id, tags, webformatURL, largeImageURL }) => ({
+            id,
+            tags,
+            webformatURL,
+            largeImageURL,
+          })
+        );
 
-          if (page === 1) {
-            setImages(modifiedHits);
-          } else {
-            setImages(prevImages => [...prevImages, ...modifiedHits]);
-          }
-
-          setIsLastPage(
-            prevImages => prevImages.length + modifiedHits.length >= totalHits
-          );
-        })
-        .catch(error => {
-          setError(error.message);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    },
-    [query, page]
-  );
+        setImages(prevImages => [...prevImages, ...modifiedHits]);
+        setPage(prevPage => prevPage + 1);
+        setIsLastPage(images.length + modifiedHits.length >= totalHits);
+      })
+      .catch(error => {
+        setError(error.message);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [query, page, images]);
 
   useEffect(() => {
-    console.log('useEffect - Before fetchImages: query:', query, 'page:', page);
-    if (query !== '') {
+    if (query !== prevQueryRef.current) {
       setImages([]);
+      setPage(1);
       setIsLastPage(false);
-      fetchImages(page);
+      fetchImages();
     }
-    console.log('useEffect - After fetchImages: query:', query, 'page:', page);
-  }, [query, page, fetchImages]);
+  }, [query, fetchImages]);
+
   useEffect(() => {
-    console.log('Current page:', page);
-  }, [page]);
+    prevQueryRef.current = query;
+  }, [query]);
+
   const handleSearchSubmit = newQuery => {
-    if (newQuery === query) {
+    if (query === newQuery) {
       return;
     }
     setQuery(newQuery);
+    setPage(1);
+    setImages([]);
+    setError(null);
+    setIsLastPage(false);
   };
 
   const handleImageClick = image => {
@@ -98,16 +94,6 @@ const App = () => {
     document.body.style.overflow = 'auto';
   };
 
-  const handleLoadMore = () => {
-    console.log('Before setPage:', page);
-    const nextPage = page + 1;
-    setPage(nextPage);
-
-    fetchImages(nextPage);
-
-    console.log('After setPage:', nextPage);
-  };
-
   return (
     <div className={css.App}>
       <Searchbar onSubmit={handleSearchSubmit} />
@@ -119,12 +105,10 @@ const App = () => {
       {isLoading && <Loader />}
 
       {!isLoading && images.length > 0 && !isLastPage && (
-        <Button onClick={handleLoadMore} />
+        <Button onClick={fetchImages} />
       )}
 
       {showModal && <Modal image={selectedImage} onClose={handleModalClose} />}
-
-      <ToastContainer />
     </div>
   );
 };
